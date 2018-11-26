@@ -58,6 +58,7 @@ class Adapter_EntityMapper
     {
         // Load object from database if object id is present
         $cacheId = 'objectmodel_'.$entityDefs['classname'].'_'.(int) $id.'_'.(int) $idShop.'_'.(int) $idLang;
+
         if (!$shouldCacheObjects || !Cache::isStored($cacheId)) {
             $sql = new DbQuery();
             $sql->from($entityDefs['table'], 'a');
@@ -78,15 +79,16 @@ class Adapter_EntityMapper
 
             if ($objectData = Db::getInstance()->getRow($sql)) {
                 if (!$idLang && isset($entityDefs['multilang']) && $entityDefs['multilang']) {
-                    $sql = 'SELECT *
-							FROM `'.bqSQL(_DB_PREFIX_.$entityDefs['table']).'_lang`
-							WHERE `'.bqSQL($entityDefs['primary']).'` = '.(int) $id
-                        .(($idShop && $entity->isLangMultishop()) ? ' AND `id_shop` = '.(int) $idShop : '');
+                    $sql = (new DbQuery())
+                        ->select('*')
+                        ->from($entityDefs['table'] . '_lang')
+                        ->where('`' .$entityDefs['primary'] . '` = ' . (int)$id)
+                        ->where(($idShop && $entity->isLangMultishop()) ? '`id_shop` = '.(int)$idShop : null);
 
                     if ($objectDatasLang = Db::getInstance()->executeS($sql)) {
                         foreach ($objectDatasLang as $row) {
                             foreach ($row as $key => $value) {
-                                if ($key != $entityDefs['primary'] && property_exists($entity, $key)) {
+                                if ($key != $entityDefs['primary'] && $key != 'id_lang' && $key != 'id_shop' && property_exists($entity, $key)) {
                                     if (!isset($objectData[$key]) || !is_array($objectData[$key])) {
                                         $objectData[$key] = [];
                                     }
